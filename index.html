@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Викторина по Кибербезопасности</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 15px; }
+        .quiz-card { background: #ffffff; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 500px; padding: 25px; text-align: center; }
+        .header { margin-bottom: 20px; }
+        .header h1 { font-size: 22px; color: #1e3c72; margin-bottom: 5px; }
+        .header p { font-size: 14px; color: #666; }
+        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 10px; overflow: hidden; margin-bottom: 20px; }
+        .progress { background: #4caf50; height: 100%; width: 0%; transition: width 0.3s ease; }
+        .question-text { font-size: 17px; font-weight: 600; color: #333; margin-bottom: 20px; text-align: left; min-height: 50px; }
+        .options-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .option-btn { background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 12px; padding: 14px 16px; font-size: 15px; text-align: left; color: #333; cursor: pointer; transition: all 0.2s ease; }
+        .option-btn:active { transform: scale(0.98); }
+        .option-btn.correct { background: #d4edda; border-color: #28a745; color: #155724; font-weight: bold; }
+        .option-btn.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; font-weight: bold; }
+        .result-screen { display: none; }
+        .score-box { font-size: 48px; font-weight: bold; color: #1e3c72; margin: 15px 0; }
+        .grade-box { font-size: 22px; font-weight: bold; margin-bottom: 15px; }
+        .restart-btn { background: #1e3c72; color: white; border: none; padding: 14px 28px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
+        .restart-btn:hover { background: #2a5298; }
+
+        /* Стартовый экран */
+        .count-title { font-size: 16px; font-weight: 600; color: #333; margin: 15px 0; }
+        .count-container { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .count-btn { flex: 1; max-width: 100px; background: #f0f4fa; border: 2px solid #c8d6ea; border-radius: 12px; padding: 14px 0; font-size: 20px; font-weight: bold; color: #1e3c72; cursor: pointer; transition: all 0.2s ease; }
+        .count-btn:hover { background: #dce8f7; border-color: #1e3c72; transform: translateY(-2px); }
+        .start-btn { background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
+        .start-btn:hover { background: #218838; }
+
+        /* Кнопки масштабирования */
+        .zoom-controls { position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+        .zoom-btn { width: 48px; height: 48px; border-radius: 50%; border: none; background: rgba(255,255,255,0.9); color: #1e3c72; font-size: 24px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: all 0.2s ease; }
+        .zoom-btn:hover { background: #ffffff; transform: scale(1.1); }
+    </style>
+</head>
+<body>
+
+    <!-- Кнопки приближения/отдаления -->
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="changeZoom(1)" title="Приблизить">+</button>
+        <button class="zoom-btn" onclick="changeZoom(-1)" title="Отдалить">−</button>
+    </div>
+
+    <div class="quiz-card">
+        <!-- Стартовый экран -->
+        <div class="start-screen" id="start-screen" style="display: block;">
+            <div class="header">
+                <h1>🔒 Кибербезопасность</h1>
+                <p>Проект по информатике (7 класс)</p>
+            </div>
+            <div class="count-title">Сколько вопросов пройти?</div>
+            <div class="count-container">
+                <button class="count-btn" onclick="setCount(10)">10</button>
+                <button class="count-btn" onclick="setCount(15)">15</button>
+                <button class="count-btn" onclick="setCount(20)">20</button>
+            </div>
+            <button class="start-btn" onclick="startQuiz()">Начать тест</button>
+        </div>
+
+        <div id="quiz-screen" style="display: none;">
+            <div class="header">
+                <h1>🔒 Кибербезопасность</h1>
+                <p>Проект по информатике (7 класс)</p>
+            </div>
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+            <div class="question-text" id="question-text">Загрузка вопроса...</div>
+            <div class="options-container" id="options-container"></div>
+        </div>
+
+        <div class="result-screen" id="result-screen">
+            <h2>🎉 Тест завершён!</h2>
+            <div class="score-box" id="score-text">0 / 10</div>
+            <div class="grade-box" id="grade-text">Оценка: -</div>
+            <p id="feedback-text" style="color: #666; margin-bottom: 20px;"></p>
+            <button class="restart-btn" onclick="restartQuiz()">Пройти ещё раз</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            { q: "Какой из этих паролей является наиболее надёжным?", options: ["12345678", "Dima2013", "K8#mQ9!vL2", "password123"], correct: 2 },
+            { q: "Что такое фишинг в интернете?", options: ["Быстрое скачивание видео", "Кража паролей через поддельные сайты", "Очистка смартфона от вирусов", "Онлайн-игра про рыбалку"], correct: 1 },
+            { q: "Пришло сообщение от друга: «Голосуй за меня по ссылке!». Твои действия?", options: ["Сразу перейти и ввести свой номер", "Переслать всем друзьям", "Спросить друга лично, не взломали ли его", "Удалить мессенджер"], correct: 2 },
+            { q: "Как понять, что сайт безопасен для ввода данных?", options: ["На сайте много яркой рекламы", "Адрес начинается с https:// и есть замочек", "Сайт открывается очень быстро", "На сайте нет картинок"], correct: 1 },
+            { q: "Что такое двухфакторная аутентификация (2FA)?", options: ["Вход по паролю + коду из СМС/приложения", "Использование двух антивирусов", "Вход с двух телефонов одновременно", "Проверка экрана на царапины"], correct: 0 },
+            { q: "Что делать, если компьютер заразился вирусом?", options: ["Ничего, само пройдёт", "Запустить проверку антивирусом и сообщить взрослым", "Отключить компьютер от розетки навсегда", "Скачать больше программ из интернета"], correct: 1 },
+            { q: "Можно ли устанавливать программы только с официальных магазинов (App Store, Google Play)?", options: ["Нет, лучше с любых сайтов", "Да, так безопаснее — там проверяют приложения", "Не имеет значения, где скачивать", "Только если программа бесплатная"], correct: 1 },
+            { q: "Что такое спам?", options: ["Вкусный обед", "Нежелательные рекламные письма и сообщения", "Вирус, который ломает экран", "Быстрый интернет"], correct: 1 },
+            { q: "Придумывая пароль, что лучше всего включить?", options: ["Только имя и дату рождения", "Буквы разного регистра, цифры и символы", "Только цифры", "Слово «пароль»"], correct: 1 },
+            { q: "Тебе в игре предлагают «бесплатные монеты», если введёшь логин и пароль на стороннем сайте. Что делать?", options: ["Ввести данные быстрее, пока не забрали", "Отказаться — это развод", "Ввести чужой логин", "Попросить монеты у друга"], correct: 1 },
+            { q: "Что такое Wi-Fi в общественном месте без пароля?", options: ["Всегда безопасно", "Может быть опасно: злоумышленники могут перехватить данные", "Такого не бывает", "Только для компьютеров"], correct: 1 },
+            { q: "Как называется программа, которая крадёт пароли и личные данные?", options: ["Печеньки (cookies)", "Троян / вирус-шпион", "Браузер", "Курсор"], correct: 1 },
+            { q: "Можно ли публиковать в открытом доступе свой домашний адрес и школу?", options: ["Да, всем всё равно", "Да, если аккаунт красивый", "Нет, это личная информация, ею могут воспользоваться злоумышленники", "Можно только фотографии"], correct: 2 },
+            { q: "Что такое «кибербуллинг»?", options: ["Быстрый интернет", "Травля и оскорбления человека в интернете", "Защита компьютера", "Компьютерная игра"], correct: 1 },
+            { q: "Тебе прислали файл от незнакомца с надписью «Сюрприз! Открой». Твои действия?", options: ["Сразу открыть", "Открыть на компьютере друга", "Не открывать и сообщить взрослым", "Переслать друзьям"], correct: 2 },
+            { q: "Что такое антивирус?", options: ["Программа для рисования", "Программа, которая защищает от вредоносных программ", "Сайт с играми", "Часть монитора"], correct: 1 },
+            { q: "Сколько одинаковых паролей лучше использовать на разных сайтах?", options: ["Один, чтобы не забыть", "Разные для каждого сайта", "Два: один простой, один сложный", "Ни одного — хранить все в заметках"], correct: 1 },
+            { q: "Что значит значок замочка в адресной строке браузера?", options: ["Сайт платный", "Соединение защищено, данные шифруются", "На сайте есть вирус", "Сайт закрыт на ремонт"], correct: 1 },
+            { q: "Твой пароль узнал одноклассник. Что делать?", options: ["Ничего страшного", "Поссориться с ним", "Срочно сменить пароль на всех сервисах", "Удалить все фотографии"], correct: 2 },
+            { q: "Почему нельзя вводить данные карты на подозрительном сайте?", options: ["Карта может сломаться", "Деньги могут украсть", "Сайт будет работать медленно", "Экран станет тёмным"], correct: 1 }
+        ];
+
+        let currentQ = 0;
+        let score = 0;
+        let canAnswer = true;
+        let questionCount = 10;
+        let quizQuestions = [];
+        let fontScale = 1;
+
+        function setCount(count) {
+            questionCount = count;
+            document.querySelectorAll('.count-btn').forEach(btn => {
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            });
+            event.target.style.background = '#1e3c72';
+            event.target.style.color = '#ffffff';
+            event.target.style.borderColor = '#1e3c72';
+        }
+
+        function changeZoom(direction) {
+            fontScale += direction * 0.1;
+            if (fontScale < 0.7) fontScale = 0.7;
+            if (fontScale > 1.8) fontScale = 1.8;
+            document.querySelector('.quiz-card').style.fontSize = fontScale + 'em';
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function startQuiz() {
+            quizQuestions = shuffle([...questions]).slice(0, questionCount);
+            currentQ = 0;
+            score = 0;
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('quiz-screen').style.display = 'block';
+            document.getElementById('result-screen').style.display = 'none';
+            showQuestion();
+        }
+
+        function showQuestion() {
+            canAnswer = true;
+            const q = quizQuestions[currentQ];
+            document.getElementById('question-text').innerText = `${currentQ + 1}. ${q.q}`;
+            document.getElementById('progress').style.width = `${(currentQ / quizQuestions.length) * 100}%`;
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            const order = shuffle([0, 1, 2, 3]);
+
+            order.forEach(optIdx => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = q.options[optIdx];
+                btn.onclick = () => selectOption(optIdx, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectOption(index, btn) {
+            if (!canAnswer) return;
+            canAnswer = false;
+
+            const correctIdx = quizQuestions[currentQ].correct;
+            const buttons = document.querySelectorAll('.option-btn');
+
+            if (index === correctIdx) {
+                btn.classList.add('correct');
+                score++;
+            } else {
+                btn.classList.add('wrong');
+                buttons.forEach(b => {
+                    if (b.innerText === quizQuestions[currentQ].options[correctIdx]) {
+                        b.classList.add('correct');
+                    }
+                });
+            }
+
+            setTimeout(() => {
+                currentQ++;
+                if (currentQ < quizQuestions.length) {
+                    showQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1200);
+        }
+
+        function showResults() {
+            document.getElementById('progress').style.width = '100%';
+            document.getElementById('quiz-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'block';
+            document.getElementById('score-text').innerText = `${score} / ${quizQuestions.length}`;
+
+            const gradeElem = document.getElementById('grade-text');
+            const feedbackElem = document.getElementById('feedback-text');
+            const percent = score / quizQuestions.length;
+
+            if (percent === 1) {
+                gradeElem.innerText = "Оценка: 5";
+                gradeElem.style.color = "#28a745";
+                feedbackElem.innerText = "Отлично! Ты настоящая кибер-защита!";
+            } else if (percent >= 0.8) {
+                gradeElem.innerText = "Оценка: 5";
+                gradeElem.style.color = "#28a745";
+                feedbackElem.innerText = "Почти идеально! Осталось чуть-чуть!";
+            } else if (percent >= 0.6) {
+                gradeElem.innerText = "Оценка: 4";
+                gradeElem.style.color = "#ffc107";
+                feedbackElem.innerText = "Хороший результат, но повтори правила!";
+            } else if (percent >= 0.4) {
+                gradeElem.innerText = "Оценка: 3";
+                gradeElem.style.color = "#ff9800";
+                feedbackElem.innerText = "Неплохо, но кибербезопасность нужно знать лучше!";
+            } else {
+                gradeElem.innerText = "Оценка: 2";
+                gradeElem.style.color = "#dc3545";
+                feedbackElem.innerText = "Будь осторожнее в сети! Попробуй ещё раз.";
+            }
+        }
+
+        function restartQuiz() {
+            document.getElementById('start-screen').style.display = 'block';
+            document.getElementById('quiz-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
