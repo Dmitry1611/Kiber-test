@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Викторина по Кибербезопасности</title>
+<style>
+body {
+    --bg1: #1e3c72; --bg2: #2a5298; --accent: #2196f3; --accentDark: #1e3c72;
+    --matrix: #00e676; --card: #ffffff; --text: #333333; --muted: #666666;
+    --optBg: #f8f9fa; --optBorder: #e9ecef; --track: #e0e0e0;
+    --countBg: #f0f4fa; --countBorder: #c8d6ea;
+}
+body.t-space { --bg1:#2b1055; --bg2:#7597de; --accent:#9c6bff; --accentDark:#4a2b8a; --matrix:#b388ff; }
+body.t-fantasy { --bg1:#134e5e; --bg2:#71b280; --accent:#2e9e5b; --accentDark:#134e5e; --matrix:#ffd54f; }
+body.dark { --card:#232336; --text:#e8e8f0; --muted:#a0a0b8; --optBg:#2e2e44; --optBorder:#3d3d5c; --track:#3d3d5c; --countBg:#2e2e44; --countBorder:#3d3d5c; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 15px; transition: background 0.5s; }
+#matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.28; pointer-events: none; }
+#confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; pointer-events: none; }
+.quiz-card { position: relative; z-index: 10; background: var(--card); color: var(--text); border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 500px; padding: 25px; text-align: center; transition: background 0.5s; }
+.header { margin-bottom: 15px; }
+.header h1 { font-size: 22px; color: var(--accentDark); margin-bottom: 5px; transition: color 0.5s; }
+body.dark .header h1 { color: var(--accent); }
+.header p { font-size: 14px; color: var(--muted); }
+#shield-icon { display: inline-block; transition: all 0.4s; }
+#shield-icon.active { transform: scale(1.4); filter: drop-shadow(0 0 8px #28a745); }
+
+.safety-banner { background: #e8f5e9; border: 2px solid #28a745; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; color: #1b5e20; text-align: left; margin-bottom: 15px; line-height: 1.5; }
+body.dark .safety-banner { background: #1e3320; color: #a5d6a7; }
+
+.progress-bar { background: var(--track); border-radius: 10px; height: 10px; overflow: hidden; margin-bottom: 10px; }
+.progress { background: #4caf50; height: 100%; width: 0%; transition: width 0.3s ease; }
+.timer-bar { background: var(--track); border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 18px; }
+.timer-fill { background: var(--accent); height: 100%; width: 100%; transition: width 0.1s linear; }
+.timer-fill.low { background: #dc3545; }
+.timer-text { font-size: 13px; color: var(--muted); text-align: right; margin-bottom: 4px; }
+.question-text { font-size: 17px; font-weight: 600; margin-bottom: 18px; text-align: left; min-height: 50px; }
+.options-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+.option-btn { background: var(--optBg); border: 2px solid var(--optBorder); border-radius: 12px; padding: 14px 16px; font-size: 15px; text-align: left; color: var(--text); cursor: pointer; transition: all 0.2s ease; }
+.option-btn.correct { background: #d4edda; border-color: #28a745; color: #155724; font-weight: bold; }
+.option-btn.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; font-weight: bold; }
+.option-btn:disabled { cursor: default; }
+.stat-note { display: block; font-size: 11px; font-weight: normal; opacity: 0.75; margin-top: 3px; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+.shake { animation: shake 0.4s ease; }
+@keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.02)} 100%{transform:scale(1)} }
+.pulse { animation: pulse 0.4s ease; }
+
+.explanation { display: none; background: #e7f3ff; border-left: 4px solid var(--accent); border-radius: 8px; padding: 12px 14px; font-size: 14px; text-align: left; margin-bottom: 15px; line-height: 1.5; }
+body.dark .explanation { background: #26314a; }
+.explanation b { color: var(--accent); }
+.next-btn { display: none; background: var(--accent); color: white; border: none; padding: 12px 28px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; }
+.next-btn:hover { filter: brightness(0.9); }
+
+.count-title { font-size: 16px; font-weight: 600; margin: 12px 0; }
+.count-container { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+.count-btn { width: 62px; background: var(--countBg); border: 2px solid var(--countBorder); border-radius: 12px; padding: 12px 0; font-size: 18px; font-weight: bold; color: var(--accentDark); cursor: pointer; transition: all 0.2s ease; }
+body.dark .count-btn { color: var(--accent); }
+.count-btn:hover { transform: translateY(-2px); }
+.theme-container { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
+.theme-btn { width: 52px; height: 44px; font-size: 22px; background: var(--countBg); border: 2px solid var(--countBorder); border-radius: 12px; cursor: pointer; }
+.mode-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; font-size: 14px; color: var(--muted); }
+.start-btn { background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+.start-btn:hover { background: #218838; }
+.records-box, .badges-box, .tip-box { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--optBorder); font-size: 13px; color: var(--muted); line-height: 1.7; }
+.records-box b, .badges-box b { color: var(--accent); }
+.badge { display: inline-block; background: var(--countBg); border: 1px solid var(--countBorder); border-radius: 10px; padding: 3px 8px; margin: 2px; font-size: 12px; opacity: 0.4; }
+.badge.earned { opacity: 1; background: #fff3cd; border-color: #ffc107; }
+body.dark .badge.earned { background: #4a3d1e; }
+.tip-box { font-style: italic; }
+.tip-box b { color: var(--accent); font-style: normal; }
+
+.result-screen { display: none; }
+.score-box { font-size: 48px; font-weight: bold; color: var(--accentDark); margin: 12px 0; }
+body.dark .score-box { color: var(--accent); }
+.grade-box { font-size: 22px; font-weight: bold; margin-bottom: 8px; }
+.best-result { font-size: 14px; margin-bottom: 6px; }
+.stats-line { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.feedback-text { color: var(--muted); margin-bottom: 8px; }
+.new-badges { font-size: 14px; margin: 8px 0; min-height: 10px; }
+.restart-btn { background: var(--accentDark); color: white; border: none; padding: 13px 28px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 8px; }
+body.dark .restart-btn { background: var(--accent); }
+.restart-btn:hover { filter: brightness(1.15); }
+.copy-btn { background: #6c757d; color: white; border: none; padding: 11px 28px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 8px; }
+.copy-btn:hover { background: #5a6268; }
+
+.checklist { text-align: left; background: var(--optBg); border: 2px solid var(--optBorder); border-radius: 12px; padding: 12px 14px; margin-top: 12px; font-size: 13.5px; }
+.checklist h3 { font-size: 14px; margin-bottom: 8px; color: var(--accentDark); }
+body.dark .checklist h3 { color: var(--accent); }
+.checklist label { display: flex; gap: 8px; margin-bottom: 6px; cursor: pointer; line-height: 1.4; }
+
+.mistakes { text-align: left; margin-top: 12px; }
+.mistakes summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+.mistake-item { background: var(--optBg); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+.mistake-item .mq { font-weight: 600; margin-bottom: 4px; }
+.mistake-item .mc { color: #28a745; }
+.mistake-item .mu { color: #dc3545; }
+
+.ai-chat { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--optBorder); text-align: left; }
+.ai-chat-title { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+.chat-messages { background: var(--optBg); border: 2px solid var(--optBorder); border-radius: 12px; padding: 10px; height: 180px; overflow-y: auto; margin-bottom: 8px; }
+.chat-msg { margin-bottom: 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; max-width: 92%; white-space: pre-wrap; }
+.chat-msg.user { background: #d1e7ff; margin-left: auto; width: fit-content; }
+.chat-msg.bot { background: #e8f5e9; width: fit-content; cursor: pointer; }
+body.dark .chat-msg.user { background: #2b3d5c; }
+body.dark .chat-msg.bot { background: #22392a; }
+.terminal-cursor { animation: blink 0.9s step-end infinite; color: #28a745; font-weight: bold; }
+@keyframes blink { 50% { opacity: 0; } }
+.chat-input-row { display: flex; gap: 8px; }
+.chat-input { flex: 1; border: 2px solid var(--optBorder); background: var(--optBg); color: var(--text); border-radius: 12px; padding: 10px 12px; font-size: 14px; outline: none; caret-color: #28a745; font-family: 'Consolas', monospace; }
+.chat-input:focus { border-color: var(--accent); }
+.chat-send { background: var(--accentDark); color: white; border: none; border-radius: 12px; padding: 10px 16px; font-size: 16px; font-weight: bold; cursor: pointer; }
+body.dark .chat-send { background: var(--accent); }
+
+.zoom-controls { position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+.zoom-btn { width: 46px; height: 46px; border-radius: 50%; border: none; background: rgba(255,255,255,0.9); color: var(--accentDark); font-size: 22px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+.zoom-btn:hover { transform: scale(1.1); }
+.ctrl-controls { position: fixed; bottom: 15px; left: 15px; display: flex; gap: 8px; z-index: 100; }
+.ctrl-btn { min-width: 46px; height: 46px; border-radius: 12px; border: none; background: rgba(255,255,255,0.9); font-size: 20px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); padding: 0 10px; }
+#matrix-toggle { position: fixed; bottom: 15px; right: 15px; z-index: 100; border: none; background: rgba(255,255,255,0.9); border-radius: 12px; padding: 10px 14px; font-size: 13px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+@media (max-width: 480px) {
+    .quiz-card { padding: 18px; }
+    .header h1 { font-size: 19px; }
+    .question-text { font-size: 15px; }
+    .score-box { font-size: 38px; }
+    .chat-messages { height: 150px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="matrix-canvas"></canvas>
+<canvas id="confetti-canvas"></canvas>
+
+<div class="zoom-controls">
+    <button class="zoom-btn" onclick="changeZoom(1)" title="Приблизить">+</button>
+    <button class="zoom-btn" onclick="changeZoom(-1)" title="Отдалить">−</button>
+</div>
+<div class="ctrl-controls">
+    <button class="ctrl-btn" onclick="toggleSound()" id="sound-btn" title="Звук">🔊</button>
+    <button class="ctrl-btn" onclick="toggleFullscreen()" title="Полный экран">⛶</button>
+    <button class="ctrl-btn" onclick="toggleDark()" id="dark-btn" title="Тёмная тема">🌙</button>
+</div>
+<button id="matrix-toggle" onclick="toggleMatrix()">⏸ Фон</button>
+
+<div class="quiz-card">
+    <div id="start-screen" style="display: block;">
+        <div class="header">
+            <h1><span id="shield-icon">🛡️</span> <span id="theme-emoji">🔒</span> Кибербезопасность</h1>
+            <p>Проект по информатике (7 класс)</p>
+        </div>
+        <div class="safety-banner">🔐 <b>Этот тест полностью безопасен:</b> сайт не содержит никаких ссылок, не просит личные данные, ничего не отправляет в интернет и не содержит обмана. Всё работает локально в твоём браузере.</div>
+        <div class="count-title">Сколько вопросов пройти?</div>
+        <div class="count-container">
+            <button class="count-btn" onclick="setCount(10, this)">10</button>
+            <button class="count-btn" onclick="setCount(15, this)">15</button>
+            <button class="count-btn" onclick="setCount(20, this)">20</button>
+            <button class="count-btn" onclick="setCount(30, this)">30</button>
+            <button class="count-btn" onclick="setCount(50, this)">50</button>
+        </div>
+        <div class="count-title" style="font-size:14px;">Тема оформления:</div>
+        <div class="theme-container">
+            <button class="theme-btn" onclick="setTheme('t-cyber', '🔒', this)">🔒</button>
+            <button class="theme-btn" onclick="setTheme('t-space', '🚀', this)">🚀</button>
+            <button class="theme-btn" onclick="setTheme('t-fantasy', '🐉', this)">🐉</button>
+        </div>
+        <div class="mode-row">
+            <input type="checkbox" id="exam-mode">
+            <label for="exam-mode">🎓 Режим «Экзамен» (без подсветки ответов и пояснений)</label>
+        </div>
+        <button class="start-btn" onclick="startQuiz()">Начать тест</button>
+        <div class="badges-box" id="badges-box"></div>
+        <div class="records-box" id="records-box"></div>
+        <div class="tip-box" id="tip-box"></div>
+    </div>
+
+    <div id="quiz-screen" style="display: none;">
+        <div class="header">
+            <h1><span id="theme-emoji2">🔒</span> Кибербезопасность</h1>
+            <p>Проект по информатике (7 класс)</p>
+        </div>
+        <div class="progress-bar"><div class="progress" id="progress"></div></div>
+        <div class="timer-text" id="timer-text">⏱ 30 сек</div>
+        <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+        <div class="question-text" id="question-text">Загрузка...</div>
+        <div class="options-container" id="options-container"></div>
+        <div class="explanation" id="explanation"></div>
+        <button class="next-btn" id="next-btn" onclick="nextQuestion()">Далее → (Enter)</button>
+    </div>
+
+    <div class="result-screen" id="result-screen">
+        <h2>🎉 Тест завершён!</h2>
+        <div class="score-box" id="score-text">0 / 10</div>
+        <div class="grade-box" id="grade-text">Оценка: -</div>
+        <div class="best-result" id="best-result"></div>
+        <div class="stats-line" id="stats-line"></div>
+        <p class="feedback-text" id="feedback-text"></p>
+        <div class="new-badges" id="new-badges"></div>
+        <button class="copy-btn" onclick="copyResult()">📤 Скопировать результат</button>
+        <div class="checklist" id="checklist">
+            <h3>✅ Чек-лист: насколько ты защищён?</h3>
+            <label><input type="checkbox"> Включена 2FA в важных аккаунтах (почта, соцсети)</label>
+            <label><input type="checkbox"> На разных сайтах — разные пароли</label>
+            <label><input type="checkbox"> Телефон и приложения обновлены</label>
+            <label><input type="checkbox"> На телефоне есть блокировка экрана (пин/отпечаток)</label>
+            <label><input type="checkbox"> Проверяю адрес сайта перед вводом пароля</label>
+        </div>
+        <div class="mistakes" id="mistakes-block"></div>
+        <button class="restart-btn" onclick="restartQuiz()">Пройти ещё раз</button>
+
+        <div class="ai-chat">
+            <div class="ai-chat-title">🤖 КиберПомощник — спроси, что было непонятно</div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-row">
+                <input class="chat-input" id="chat-input" placeholder="> задай вопрос..." onkeydown="if(event.key==='Enter')sendQuestion()">
+                <button class="chat-send" onclick="sendQuestion()">→</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ==================== 50 ВОПРОСОВ ==================== */
+const questions = [
+{q:"Какой из этих паролей наиболее надёжный?",options:["12345678","Dima2013","K8#mQ9!vL2","password123"],correct:2,expl:"Надёжный пароль содержит буквы разного регистра, цифры и спецсимволы. Имена и простые слова легко угадать."},
+{q:"Что такое фишинг?",options:["Быстрое скачивание видео","Кража паролей через поддельные сайты","Очистка смартфона","Игра про рыбалку"],correct:1,expl:"Фишинг — обман, когда мошенники создают поддельные сайты и письма, чтобы украсть логины и пароли."},
+{q:"Сообщение от друга: «Голосуй за меня по ссылке!». Действия?",options:["Перейти и ввести номер","Переслать друзьям","Спросить друга лично, не взломали ли его","Удалить мессенджер"],correct:2,expl:"Аккаунты друзей часто взламывают. Проверяй подозрительные сообщения лично, прежде чем переходить по ссылкам."},
+{q:"Как понять, что сайт безопасен для ввода данных?",options:["Много яркой рекламы","Адрес с https:// и замочек","Сайт быстро открывается","Нет картинок"],correct:1,expl:"Замочек и https означают шифрование данных между тобой и сайтом."},
+{q:"Что такое двухфакторная аутентификация (2FA)?",options:["Пароль + код из СМС/приложения","Два антивируса","Вход с двух телефонов","Проверка экрана"],correct:0,expl:"2FA — второй замок: даже если пароль украдут, без кода зайти нельзя."},
+{q:"Компьютер заразился вирусом. Что делать?",options:["Ничего, само пройдёт","Проверка антивирусом + сообщить взрослым","Выключить навсегда","Скачать ещё программ"],correct:1,expl:"Антивирус удалит вредоносную программу, а взрослые помогут, если вирус что-то повредил или украл."},
+{q:"Где безопаснее скачивать приложения?",options:["С любых сайтов","Из официальных магазинов (App Store, Google Play)","Не имеет значения","Только бесплатные"],correct:1,expl:"В официальных магазинах приложения проверяют на вирусы."},
+{q:"Что такое спам?",options:["Вкусный обед","Нежелательные рекламные рассылки","Вирус ломающий экран","Быстрый интернет"],correct:1,expl:"Спам — навязчивая реклама. В таких письмах часто прячутся ссылки на мошеннические сайты."},
+{q:"Что включить в пароль, чтобы он был надёжным?",options:["Имя и дату рождения","Буквы разного регистра, цифры, символы","Только цифры","Слово «пароль»"],correct:1,expl:"Чем разнообразнее символы, тем сложнее подобрать пароль. От 12 символов — ещё лучше."},
+{q:"В игре предлагают «бесплатные монеты» за логин и пароль на стороннем сайте. Что делать?",options:["Ввести быстрее","Отказаться — это развод","Ввести чужой логин","Попросить у друга"],correct:1,expl:"Так крадут игровые аккаунты, а потом требуют выкуп."},
+{q:"Wi-Fi в общественном месте без пароля — это...",options:["Всегда безопасно","Опасно: данные могут перехватить","Такого не бывает","Только для ПК"],correct:1,expl:"В открытой сети злоумышленник может подсмотреть, что ты вводишь."},
+{q:"Программа, крадущая пароли и данные, — это...",options:["Cookies","Троян / шпион","Браузер","Курсор"],correct:1,expl:"Троян прячется в обычной программе и тайно отправляет данные злоумышленникам."},
+{q:"Можно ли публиковать открыто домашний адрес и школу?",options:["Да, всем всё равно","Да, если аккаунт красивый","Нет, это личная информация","Можно только фото"],correct:2,expl:"По личным данным мошенники могут вычислить тебя в реальной жизни."},
+{q:"Что такое кибербуллинг?",options:["Быстрый интернет","Травля человека в интернете","Защита компьютера","Игра"],correct:1,expl:"Кибербуллинг — травля в сети. Видишь — не молчи, расскажи взрослым."},
+{q:"Файл от незнакомца «Сюрприз! Открой». Действия?",options:["Сразу открыть","Открыть на ПК друга","Не открывать, сообщить взрослым","Переслать друзьям"],correct:2,expl:"Файлы от незнакомцев — типичный способ распространения вирусов."},
+{q:"Что такое антивирус?",options:["Программа для рисования","Программа защиты от вредоносных программ","Сайт с играми","Часть монитора"],correct:1,expl:"Антивирус проверяет файлы, находит вирусы и не даёт им навредить."},
+{q:"Сколько одинаковых паролей использовать на разных сайтах?",options:["Один, чтобы не забыть","Разные на каждом сайте","Два: простой и сложный","Хранить все в заметках"],correct:1,expl:"Если один пароль утек, его попробуют на всех сервисах."},
+{q:"Значок замочка в адресной строке означает...",options:["Сайт платный","Соединение защищено, данные шифруются","На сайте вирус","Сайт закрыт"],correct:1,expl:"Замочек = HTTPS: трафик зашифрован и его нельзя подслушать."},
+{q:"Пароль узнал одноклассник. Что делать?",options:["Ничего страшного","Поссориться","Срочно сменить пароль везде","Удалить фото"],correct:2,expl:"Пока пароль не сменён, аккаунт уязвим. Смени его и включи 2FA."},
+{q:"Почему нельзя вводить данные карты на подозрительном сайте?",options:["Карта сломается","Деньги могут украсть","Сайт будет тормозить","Экран потемнеет"],correct:1,expl:"Мошеннические сайты собирают номера карт и списывают деньги."},
+{q:"Что такое VPN?",options:["Ускоритель интернета","Защищённое соединение, шифрующее трафик","Вид антивируса","Игровой сервер"],correct:1,expl:"VPN шифрует весь трафик — полезно в открытых Wi-Fi сетях."},
+{q:"Что такое cookies (куки)?",options:["Вирус","Файлы, где сайт хранит данные о тебе","Программа для чистки","Сладости"],correct:1,expl:"Куки помогают сайтам запоминать вход и настройки, но за ними следят рекламщики — периодически чисти."},
+{q:"Ссылка вида bit.ly/xyz — это...",options:["Всегда безопасно","Сокращатель ссылки: настоящий адрес скрыт, осторожно","Вирус","Подарок"],correct:1,expl:"Сокращатели скрывают адрес. Наведи курсор или используй проверку ссылки, прежде чем переходить."},
+{q:"QR-код на листовке «Скидка 90%!». Что делать?",options:["Сразу отсканировать","Проверить, кому принадлежит сайт; не доверять левым кодам","Сканировать и вводить карту","Порвать листовку"],correct:1,expl:"QR-коды могут вести на фишинговые сайты. Сканируй только знакомые коды."},
+{q:"«Поздравляем! Вы выиграли iPhone! Оставьте данные карты для доставки». Это...",options:["Повезло!","Фейковый розыгрыш — мошенничество","Настоящий конкурс","Спам, но безопасный"],correct:1,expl:"Настоящие призы не требуют данных карты и предоплаты. Не было розыгрыша — не может быть выигрыша."},
+{q:"Баннер кричит «ВАШ КОМПЬЮТЕР ЗАРАЖЁН! Срочно скачайте программу!» Это...",options:["Правда, срочно скачать","Попытка вселить страх и заставить скачать вирус","Антивирус Windows","Лотерея"],correct:1,expl:"Так пугают, чтобы ты сам скачал вредоносную программу. Закрой страницу."},
+{q:"Звонок: «Я из банка, назовите код из СМС». Это...",options:["Банк, надо ответить","Мошенник: банк никогда не просит коды","Проверка","Реклама"],correct:1,expl:"Код из СМС = ключ от счёта. Банк его никогда не спрашивает. Клади трубку и звони в банк сам."},
+{q:"Приложение просит доступ к микрофону, хотя это калькулятор. Это...",options:["Нормально","Подозрительно: лишние разрешения — риск прослушки","Нужно для расчётов","Обязательно"],correct:1,expl:"Приложение не должно просить лишнего. Проверяй разрешения и отключай лишние в настройках."},
+{q:"Что такое геолокация и чем она опасна?",options:["Карта города","Местоположение: посты с геометкой показывают, где ты живёшь и бываешь","Прогноз погоды","Игра"],correct:1,expl:"Публичная геометка в постах помогает вычислить дом и маршруты. Отключай её в соцсетях."},
+{q:"Зачем нужны резервные копии?",options:["Для красоты","Чтобы восстановить файлы, если вирус их зашифрует или удалишь","Чтобы экономить место","Это вирус"],correct:1,expl:"Копии в облаке или на внешнем диске спасут фото и документы при атаке шифровальщика."},
+{q:"Зашёл в почту на компьютере в гостинице. Перед уходом нужно...",options:["Просто закрыть вкладку","Выйти из аккаунта (и из всех сеансов) — иначе следующий гость войдёт в твою почту","Выключить монитор","Ничего"],correct:1,expl:"На чужих устройствах всегда выходи из аккаунтов. После — заверши сеансы в настройках безопасности."},
+{q:"Браузер предлагает сохранить пароль. Это безопасно?",options:["Всегда безопасно","Нормально на личном устройстве с паролем, опасно на чужом","Всегда опасно","Это вирус"],correct:1,expl:"На своём устройстве с блокировкой — приемлемо. На чужих — никогда. Лучше менеджер паролей."},
+{q:"«Введите карту для бесплатной пробной подписки». Это...",options:["Бесплатно и безопасно","Риск: после пробного периода спишут деньги автоматически","Подвоха нет","Секретный бонус"],correct:1,expl:"«Бесплатный» пробный период почти всегда переходит в платный. Читай условия и отменяй вовремя."},
+{q:"В комментариях под видео: «Секретный способ монет! Жми сюда». Это...",options:["Секретный способ","Классический развод с фишинговой ссылкой","Друг","Реклама магазина"],correct:1,expl:"Мошенники засоряют комментарии ссылками на фейковые сайты. Никогда не переходи."},
+{q:"«Шок! Знаменитость сделала ЭТО...» — громкий заголовок с нереальной новостью. Это...",options:["Правда","Фейковая новость, рассчитанная на клик и репост","Секрет","Архив"],correct:1,expl:"Проверяй новости по нескольким известным источникам. Эмоциональные заголовки — главный признак фейка."},
+{q:"Как проверить, настоящий ли отправитель письма?",options:["По имени в письме","По полному адресу отправителя — его можно подделать в названии, но не в адресе","По теме письма","Никак"],correct:1,expl:"Название отправителя подделывается легко. Смотри реальный адрес до символа @."},
+{q:"Что такое «проверка безопасности» в соцсети?",options:["Вирус","Встроенный инструмент: показывает, с каких устройств открыт аккаунт","Игра","Реклама"],correct:1,expl:"Раз в месяц заглядывай в настройки безопасности: активные сеансы, подключённые приложения, телефон."},
+{q:"Забыл выйти из аккаунта на чужом телефоне. Что делать?",options:["Ничего, само выйдет","Удалённо завершить сеанс в настройках безопасности и сменить пароль","Перезагрузить свой телефон","Написать другу"],correct:1,expl:"В настройках аккаунта видно все устройства — заверши чужой сеанс и смени пароль."},
+{q:"Почему важно блокировать экран телефона?",options:["Для красоты","Потерянный телефон без блокировки = доступ ко всем аккаунтам и банкам","Чтобы батарея жила","Это неважно"],correct:1,expl:"Пин-код, отпечаток или лицо — первая линия защиты при потере телефона."},
+{q:"Зачем обновлять систему и приложения?",options:["Только новые смайлики","Обновления закрывают дыры, которыми пользуются вирусы","Чтобы было медленнее","Не нужно"],correct:1,expl:"Уязвимости находят постоянно. Обновления — бесплатная броня. Отключенные обновления = открытая дверь."},
+{q:"Bluetooth в общественном месте. Это безопасно?",options:["Всегда","Приемник виден всем рядом; выключай, когда не нужен","Bluetooth — это Wi-Fi","Только наушники опасны"],correct:1,expl:"Видимый Bluetooth позволяет атаковать устройство поблизости. Включай по необходимости."},
+{q:"«Это мама, у меня всё плохо, переведи деньги на этот номер». Звонок от незнакомого номера. Это...",options:["Мама","Мошенники используют голосовые подделки — перезвони маме на её номер","Соседка","Срочно перевести"],correct:1,expl:"Схема «родственник в беде». Всегда перезванивай на известный номер и проверяй голосом."},
+{q:"Покупка на сайте объявлений: продавец просит предоплату на карту до отправки. Это...",options:["Нормально","Риск мошенничества: безопасна оплата при получении или через сервис с гарантией","Выгодно","Быстрее"],correct:1,expl:"Предоплата незнакомцу — главный способ потерять деньги. Пользуйся доставкой с гарантией платформы."},
+{q:"Скриншот переписки с мошенником — это...",options:["Мусор","Доказательство: сохраняй его перед блокировкой и жалобой","Шутка","Вирус"],correct:1,expl:"Скриншоты помогают банку вернуть деньги и полиции найти мошенника."},
+{q:"«Твой аккаунт отметили в подозрительном посту — перейди, чтобы удалить». Это...",options:["Надо удалить","Фишинг: соцсеть не просит переходить по ссылкам из сообщений","Друг отметил","Реклама"],correct:1,expl:"Страх + ссылка = фишинг. Проверяй уведомления только в самом приложении, не по ссылкам."},
+{q:"Что такое менеджер паролей?",options:["Вирус","Программа, которая хранит и генерирует надёжные уникальные пароли","Блокнот","Игра"],correct:1,expl:"Нужно запомнить один главный пароль — остальные хранит и подставляет менеджер."},
+{q:"Как мошенники узнают, что ты онлайн в игре?",options:["Не могут","Публичный профиль и ник видны всем — по ним тебя находят и пишут с «выгодными» предложениями","Через антивирус","Через школьный журнал"],correct:1,expl:"Не принимай предметы и «дружбу» от незнакомцев, не переходи по их ссылкам."},
+{q:"Пароль из словарного слова с цифрой в конце (Dima2013) — это...",options:["Надёжно","Слабо: такие пароли подбирают за секунды по словарям","Идеально","Секретно"],correct:1,expl:"Компьютер перебирает миллионы словарных паролей в минуту. Нужна случайность: символы, регистр, длина."},
+{q:"«Ваша посылка задержана, укажите данные для уточнения». СМС со ссылкой. Это...",options:["Почта","Фейковое СМС: доставка не просит данных по ссылкам из сообщений","Срочно указать","Скидка"],correct:1,expl:"Службы доставки не собирают данные через СМС-ссылки. Проверяй посылку на официальном сайте."},
+{q:"Как лучше хранить резервные коды 2FA?",options:["В заметках телефона","Распечатать или записать и хранить дома — не в почте, не в облаке","В почте","На экране блокировки"],correct:1,expl:"Если коды лежат в почте, а почту взломали — 2FA бесполезна. Бумага дома надёжнее."},
+{q:"Друг просит одолжить аккаунт «поиграть на твоём рейтинге». Это...",options:["Нормально","Плохая идея: правила сервисов запрещают; аккаунт могут украсть или заблокировать","Выгодно","Безопасно, друг же"],correct:1,expl:"Аккаунт = твоя личность в сети. Передача паролей — риск потери аккаунта и друзей из его списка."}
+];
+
+/* ==================== 60 СОВЕТОВ ==================== */
+const tips = [
+"Совет: проверяй адрес сайта перед вводом пароля — мошенники меняют одну букву.",
+"Совет: включи 2FA в почте — она защищает все остальные аккаунты.",
+"Совет: не используй один и тот же пароль на разных сайтах.",
+"Совет: длина пароля важнее сложности: 14 символов лучше 8 сложных.",
+"Совет: не вводи данные карты по ссылкам из СМС и писем.",
+"Совет: выходи из аккаунтов на чужих устройствах.",
+"Совет: обновляй телефон и приложения — это бесплатная защита.",
+"Совет: блокируй экран телефона пин-кодом или отпечатком.",
+"Совет: не открывай вложения от незнакомцев.",
+"Совет: проверяй полный адрес отправителя письма, а не только имя.",
+"Совет: отключай Bluetooth, когда он не нужен.",
+"Совет: осторожнее с бесплатным Wi-Fi — не вводи пароли и карты.",
+"Совет: при мошенническом звонке клади трубку и перезванивай сам по официальному номеру.",
+"Совет: банк никогда не спросит код из СМС или пин-код карты.",
+"Совет: сохраняй скриншоты переписки с мошенниками.",
+"Совет: настрой автоблокировку экрана на 1 минуту.",
+"Совет: периодически проверяй активные сеансы своих аккаунтов.",
+"Совет: не публикуй фото с геометкой дома и школы.",
+"Совет: «бесплатный сыр» в сети почти всегда мышеловка.",
+"Совет: читай, какие разрешения просит приложение.",
+"Совет: скачивай приложения только из официальных магазинов.",
+"Совет: сделай резервную копию важных фото.",
+"Совет: не принимай файлы и «подарки» от незнакомцев в играх.",
+"Совет: запомни: правильные призы не требуют предоплаты и данных карты.",
+"Совет: проверяй новости в двух-трёх независимых источниках.",
+"Совет: QR-коды на улице могут вести на фишинговые сайты.",
+"Совет: пароль из имени и даты рождения угадывается за секунды.",
+"Совет: менеджер паролей поможет не забыть уникальные пароли.",
+"Совет: резервные коды 2FA храни на бумаге дома, не в почте.",
+"Совет: не переходи по ссылкам из комментариев под видео.",
+"Совет: если что-то срочное и страшное — это почти всегда мошенники.",
+"Совет: «родственник в беде» — перезвони ему на знакомый номер.",
+"Совет: покупай у незнакомцев через сервисы с гарантией, не по предоплате.",
+"Совет: не дружи в сети с теми, кого не знаешь лично.",
+"Совет: слухи и оскорбления в сети — тоже травля; сохрани доказательства и расскажи взрослым.",
+"Совет: уведомления о «взломе» проверяй в самом приложении, не по ссылкам.",
+"Совет: не веди переписку с «банком» по номеру из входящего звонка.",
+"Совет: настрой фильтр спама в почте.",
+"Совет: раз в месяц меняй пароль на почте.",
+"Совет: не сохраняй карту в браузере на чужих устройствах.",
+"Совет: перед продажей телефона сотри все данные и выйди из аккаунтов.",
+"Совет: проверяй, что на веб-камере ноутбука, если она не заклеена и не выключена.",
+"Совет: не говори вслух пароли и коды при посторонних.",
+"Совет: ссылку можно проверить, наведя на неё курсор — адрес покажется в углу браузера.",
+"Совет: подозрительное СМС от «банка» перешли родителям, не удаляя.",
+"Совет: не используй публичные зарядки USB без защиты.",
+"Совет: научи бабушку и дедушку правилу: «сначала позвони мне».",
+"Совет: в играх не скачивай «читы» и «моды» со сторонних сайтов.",
+"Совет: пароль никому не сообщаешь — даже лучшему другу.",
+"Совет: проверяй, не смотрит ли кто-то через плечо, когда вводишь пароль.",
+"Совет: не оставляй пароли на стикерах на мониторе.",
+"Совет: сомневаешься — спроси взрослых. Это не стыдно, это умно.",
+"Совет: двойная проверка реквизитов перед переводом спасает деньги.",
+"Совет: отключай геолокацию в публикациях соцсетей.",
+"Совет: следи за тем, какие приложения подключены к твоим аккаунтам.",
+"Совет: трезво оценивай «слишком хорошие» предложения — они почти всегда фейк.",
+"Совет: учи друзей этим правилам — безопасность сети держится на всех.",
+"Совет: включи поиск устройства (Find My) на телефоне.",
+"Совет: расскажи родителям, если тебя шантажируют в сети — это не твоя вина.",
+"Совет: при потере телефона сразу звони оператору и блокируй карты."
+];
+
+/* ==================== ПОМОЩНИК ==================== */
+const botKnowledge = [
+{keys:["фишинг","рыбалк"],answer:"Фишинг — мошенничество с поддельными сайтами и письмами. Цель — украсть логин и пароль. Признаки: срочность, странный адрес, просьба ввести данные по ссылке. Правило: проверяй адрес сайта и никогда не переходи по сомнительным ссылкам."},
+{keys:["парол"],answer:"Надёжный пароль: 12+ символов, буквы разного регистра, цифры и символы (#, !, %). Не используй имя и дату рождения. И главное — разный пароль для каждого сайта. Поможет менеджер паролей."},
+{keys:["2fa","двухфактор","аутентиф","код из смс"],answer:"2FA — второй замок на аккаунт: пароль + код из СМС или приложения. Даже если пароль украдут, без кода войти нельзя. Включай везде, особенно в почте — от неё зависят остальные аккаунты."},
+{keys:["вирус","антивирус","троян"],answer:"Вирус — вредоносная программа. Троян прячется в обычном файле и крадёт данные. Защита: антивирус с обновлениями, не открывать файлы от незнакомцев, качать программы только из официальных магазинов."},
+{keys:["https","замоч","замок"],answer:"Замочек и https:// означают шифрование: данные между тобой и сайтом нельзя подслушать. Нет замочка на сайте, где просят пароль или карту — уходи оттуда."},
+{keys:["спам"],answer:"Спам — нежелательные массовые рассылки. В них часто прячутся фишинговые ссылки и вирусы. Не открывай вложения, отмечай письма как спам."},
+{keys:["wifi","вай-фай","wi-fi"],answer:"Открытый Wi-Fi без пароля — риск: злоумышленник рядом может подсмотреть твои данные. Не вводи там пароли и карты, либо используй VPN."},
+{keys:["личн","данн","адрес","геолокац"],answer:"Личные данные (адрес, школа, телефон, геометка) не публикуй открыто. По ним тебя можно вычислить в реальности или взломать аккаунт через вопросы восстановления."},
+{keys:["буллинг","травл"],answer:"Кибербуллинг — травля в сети. Если видишь — поддержи жертву, расскажи взрослым. Если это с тобой — сохрани скриншоты, заблокируй обидчика и обязательно поговори с родителями или учителем."},
+{keys:["карт","деньг","оплат","перевод"],answer:"Правила безопасных платежей: проверяй замочек и https; покупай на известных сайтах; не вводи данные карты по ссылкам из писем и СМС; за подозрительные списания сразу звони в банк (номер на обороте карты)."},
+{keys:["аккаунт","взлом"],answer:"Если аккаунт взломали: 1) смени пароль на почте и на сервисе; 2) заверши все сеансы в настройках безопасности; 3) включи 2FA; 4) предупреди друзей о подозрительных сообщениях от твоего имени."},
+{keys:["vpn"],answer:"VPN — защищённое соединение, которое шифрует весь трафик. Особенно полезен в открытых Wi-Fi сетях. Выбирай известные сервисы с хорошей репутацией."},
+{keys:["cookies","куки"],answer:"Cookies (куки) — файлы, где сайты хранят данные о тебе (вход, корзина, настройки). Они удобны, но за ними следит реклама. Периодически чисти куки в настройках браузера."},
+{keys:["qr"],answer:"QR-код сам по себе не опасен, но никто не знает, что за ним. Не сканируй коды с листовок и в письмах от незнакомцев — они могут вести на фишинговый сайт."},
+{keys:["блютус","bluetooth"],answer:"Bluetooth в общественном месте: выключай, когда не нужен. Видимое устройство можно атаковать с близкого расстояния."},
+{keys:["смс","сообщение от банка","звонок"],answer:"Банк никогда не просит: коды из СМС, пин-код карты, полный номер карты по телефону. Получил такой запрос — это мошенник. Клади трубку и звони в банк сам по номеру с карты."},
+{keys:["резервн","копи"],answer:"Резервная копия — страховка от шифровальщиков и потери телефона. Копируй фото и документы в облако или на компьютер хотя бы раз в месяц."},
+{keys:["менеджер паролей"],answer:"Менеджер паролей — программа, которая генерирует и хранит уникальные пароли. Ты запоминаешь один главный пароль, остальное делает он. Это лучше, чем один пароль на все сайты."},
+{keys:["экзамен"],answer:"Режим «Экзамен» — это проверка без подсказок: после ответа не показывается правильный вариант и пояснение. В конце всё равно видно количество верных ответов."},
+{keys:["привет","здравств","hi"],answer:"Привет! Спроси меня о паролях, фишинге, 2FA, вирусах, HTTPS, спаме, Wi-Fi, личных данных, кибербуллинге, оплате картой, взломе аккаунтов, VPN, куки или резервных копиях."},
+{keys:["спасибо","благодар"],answer:"Пожалуйста! Помни главное правило: сомневаешься — остановись и спроси взрослых. Удачи! 🔒"}
+];
+
+const TIME_PER_QUESTION = 30;
+let currentQ = 0, score = 0, canAnswer = true;
+let questionCount = 10, quizQuestions = [];
+let fontScale = 1, timeLeft = TIME_PER_QUESTION, timerInterval = null;
+let examMode = false;
+let totalSeconds = 0, totalTimerInterval = null;
+let answerTimes = [], wrongAnswers = [], streak = 0, maxStreak = 0;
+let currentOptionsOrder = [];
+let questionStartTime = 0;
+let matrixOn = true, matrixInterval = null, typeTimer = null;
+const COUNTS = [10, 15, 20, 30, 50];
+const $ = id => document.getElementById(id);
+
+/* ==================== ЗВУКИ ==================== */
+let audioCtx = null;
+function getCtx() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+function beep(freq, dur, type, delay) {
+    if (!settings.sound) return;
+    try {
+        const ctx = getCtx(), o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type || "sine"; o.frequency.value = freq;
+        const t = ctx.currentTime + (delay || 0);
+        g.gain.setValueAtTime(0.12, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t); o.stop(t + dur);
+    } catch (e) {}
+}
+const sfx = {
+    correct() { beep(600, 0.12); beep(850, 0.18, "sine", 0.1); },
+    wrong() { beep(220, 0.25, "sawtooth"); beep(160, 0.3, "sawtooth", 0.12); },
+    win() { [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.22, "sine", i * 0.16)); },
+    click() { beep(500, 0.05, "square"); }
+};
+
+/* ==================== НАСТРОЙКИ ==================== */
+function loadSettings() {
+    return JSON.parse(localStorage.getItem("cyberQuizSettings") || '{"theme":"t-cyber","emoji":"🔒","dark":false,"sound":true,"matrix":true}');
+}
+let settings = loadSettings();
+function saveSettings() { localStorage.setItem("cyberQuizSettings", JSON.stringify(settings)); }
+
+function applyTheme() {
+    document.body.className = settings.theme + (settings.dark ? " dark" : "");
+    $("theme-emoji").textContent = settings.emoji;
+    $("theme-emoji2").textContent = settings.emoji;
+    document.querySelectorAll(".theme-btn").forEach(b => {
+        const on = b.textContent === settings.emoji;
+        b.style.background = on ? "var(--accent)" : "";
+        b.style.borderColor = on ? "var(--accent)" : "";
+    });
+    $("dark-btn").textContent = settings.dark ? "☀️" : "🌙";
+    $("sound-btn").textContent = settings.sound ? "🔊" : "🔇";
+    initMatrix();
+}
+function setTheme(cls, emoji, btn) { settings.theme = cls; settings.emoji = emoji; saveSettings(); applyTheme(); sfx.click(); }
+function toggleDark() { settings.dark = !settings.dark; saveSettings(); applyTheme(); sfx.click(); }
+function toggleSound() { settings.sound = !settings.sound; saveSettings(); applyTheme(); }
+
+/* ==================== МАТРИЦА ==================== */
+function initMatrix() {
+    clearInterval(matrixInterval);
+    if (!settings.matrix) { $("matrix-canvas").style.display = "none"; return; }
+    $("matrix-canvas").style.display = "block";
+    const cv = $("matrix-canvas"), ctx = cv.getContext("2d");
+    cv.width = innerWidth; cv.height = innerHeight;
+    const chars = "アイウエオカキクケコ0123456789ABCDEF<>/{}#$%";
+    const fontSize = 16, cols = Math.floor(cv.width / fontSize);
+    const drops = Array(cols).fill(0).map(() => Math.random() * -50);
+    matrixInterval = setInterval(() => {
+        ctx.fillStyle = "rgba(0,0,0,0.08)";
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.font = fontSize + "px monospace";
+        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--matrix") || "#0f0";
+        for (let i = 0; i < cols; i++) {
+            ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * fontSize, drops[i] * fontSize);
+            if (drops[i] * fontSize > cv.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+        }
+    }, 60);
+}
+function toggleMatrix() {
+    settings.matrix = !settings.matrix; saveSettings(); initMatrix();
+    $("matrix-toggle").textContent = settings.matrix ? "⏸ Фон" : "▶ Фон";
+}
+
+/* ==================== КОНФЕТТИ ==================== */
+function launchConfetti() {
+    const cv = $("confetti-canvas"), ctx = cv.getContext("2d");
+    cv.width = innerWidth; cv.height = innerHeight;
+    const colors = ["#f44336", "#ffc107", "#4caf50", "#2196f3", "#e91e63", "#9c27b0"];
+    const parts = Array.from({length: 160}, () => ({
+        x: Math.random() * cv.width, y: -20 - Math.random() * cv.height * 0.5,
+        w: 6 + Math.random() * 6, h: 8 + Math.random() * 8,
+        c: colors[Math.floor(Math.random() * colors.length)],
+        vy: 2 + Math.random() * 3, vx: -1.5 + Math.random() * 3, r: Math.random() * Math.PI
+    }));
+    const start = Date.now();
+    (function draw() {
+        ctx.clearRect(0, 0, cv.width, cv.height);
+        parts.forEach(p => {
+            p.y += p.vy; p.x += p.vx; p.r += 0.05;
+            ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+            ctx.fillStyle = p.c; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); ctx.restore();
+        });
+        if (Date.now() - start < 3500) requestAnimationFrame(draw);
+        else ctx.clearRect(0, 0, cv.width, cv.height);
+    })();
+}
+
+/* ==================== РЕКОРДЫ / БЕЙДЖИ / СОВЕТЫ ==================== */
+function getRecords() { return JSON.parse(localStorage.getItem("cyberQuizRecords") || "{}"); }
+function getBadges() { return JSON.parse(localStorage.getItem("cyberQuizBadges") || "[]"); }
+
+function showRecords() {
+    const records = getRecords();
+    if (Object.keys(records).length === 0) {
+        $("records-box").innerHTML = "🏆 Рекордов пока нет — стань первым!";
+    } else {
+        let html = "🏆 <b>Твои рекорды:</b><br>";
+        COUNTS.forEach(c => { html += c + " вопросов: <b>" + (records[c] !== undefined ? records[c] + " верных" : "—") + "</b><br>"; });
+        $("records-box").innerHTML = html;
+    }
+    const badges = getBadges();
+    const all = [["first5","🎯 Первая пятёрка"],["blitz","⚡ Блиц: 10 подряд"],["record","🏆 Рекордсмен"]];
+    let bh = "🏅 <b>Достижения:</b><br>";
+    all.forEach(([id, name]) => {
+        bh += "<span class='badge" + (badges.includes(id) ? " earned" : "") + "'>" + name + "</span>";
+    });
+    $("badges-box").innerHTML = bh;
+    $("tip-box").innerHTML = "💡 <b>Совет дня:</b> " + tips[Math.floor(Math.random() * tips.length)];
+}
+
+/* ==================== ВЫБОР КОЛИЧЕСТВА ==================== */
+function setCount(count, btn) {
+    questionCount = count;
+    document.querySelectorAll(".count-btn").forEach(b => { b.style.background = ""; b.style.color = ""; b.style.borderColor = ""; });
+    btn.style.background = "var(--accentDark)"; btn.style.color = "#fff"; btn.style.borderColor = "var(--accentDark)";
+    sfx.click();
+}
+
+/* ==================== ЗУМ / ПОЛНЫЙ ЭКРАН ==================== */
+function changeZoom(d) {
+    fontScale = Math.min(1.8, Math.max(0.7, fontScale + d * 0.1));
+    document.querySelector(".quiz-card").style.fontSize = fontScale + "em";
+}
+function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+    else document.exitFullscreen();
+}
+
+/* ==================== УТИЛИТЫ ==================== */
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function fmtTime(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+
+/* ==================== ХОД ТЕСТА ==================== */
+function startQuiz() {
+    quizQuestions = shuffle([...questions]).slice(0, questionCount);
+    currentQ = 0; score = 0; streak = 0; maxStreak = 0;
+    answerTimes = []; wrongAnswers = []; totalSeconds = 0;
+    examMode = $("exam-mode").checked;
+    $("start-screen").style.display = "none";
+    $("quiz-screen").style.display = "block";
+    $("result-screen").style.display = "none";
+    const sh = $("shield-icon"); sh.classList.add("active");
+    setTimeout(() => sh.classList.remove("active"), 1500);
+    clearInterval(totalTimerInterval);
+    totalTimerInterval = setInterval(() => { totalSeconds++; updateTimerText(); }, 1000);
+    showQuestion();
+}
+
+function updateTimerText() {
+    $("timer-text").innerText = "⏱ " + Math.ceil(Math.max(0, timeLeft)) + " сек · всего: " + fmtTime(totalSeconds);
+}
+
+function startTimer() {
+    clearInterval(timerInterval);
+    timeLeft = TIME_PER_QUESTION;
+    updateTimerText();
+    const fill = $("timer-fill");
+    fill.classList.remove("low");
+    timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+        const percent = Math.max(0, (timeLeft / TIME_PER_QUESTION) * 100);
+        fill.style.width = percent + "%";
+        if (percent < 30) fill.classList.add("low");
+        updateTimerText();
+        if (timeLeft <= 0) { clearInterval(timerInterval); onTimeOut(); }
+    }, 100);
+}
+
+function onTimeOut() {
+    if (!canAnswer) return;
+    canAnswer = false;
+    const q = quizQuestions[currentQ];
+    const card = document.querySelector(".quiz-card");
+    document.querySelectorAll(".option-btn").forEach((b, i) => {
+        b.disabled = true;
+        if (!examMode && currentOptionsOrder[i] === q.correct) b.classList.add("correct");
+    });
+    if (!examMode) {
+        card.classList.add("shake");
+        wrongAnswers.push({ q: q.q, correct: q.options[q.correct], user: "— время вышло —", expl: q.expl });
+        sfx.wrong(); if (navigator.vibrate) navigator.vibrate(200);
+        showExplanation("⏰ <b>Время вышло!</b> " + q.expl);
+    } else {
+        showExplanation("⏰ <b>Время вышло.</b> Ответ зафиксирован.");
+    }
+    streak = 0;
+}
+
+function showExplanation(html) {
+    $("explanation").innerHTML = html;
+    $("explanation").style.display = "block";
+    $("next-btn").style.display = "block";
+}
+
+function showQuestion() {
+    canAnswer = true;
+    const q = quizQuestions[currentQ];
+    questionStartTime = Date.now();
+    $("question-text").innerText = (currentQ + 1) + ". " + q.q;
+    $("progress").style.width = (currentQ / quizQuestions.length) * 100 + "%";
+    $("explanation").style.display = "none";
+    $("next-btn").style.display = "none";
+    const container = $("options-container");
+    container.innerHTML = "";
+    currentOptionsOrder = shuffle([0, 1, 2, 3]);
+    currentOptionsOrder.forEach(optIdx => {
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        btn.innerHTML = q.options[optIdx] + "<span class='stat-note' style='display:none'></span>";
+        btn.onclick = () => selectOption(optIdx, btn);
+        container.appendChild(btn);
+    });
+    startTimer();
+}
+
+function selectOption(index, btn) {
+    if (!canAnswer) return;
+    canAnswer = false;
+    clearInterval(timerInterval);
+    answerTimes.push((Date.now() - questionStartTime) / 1000);
+
+    const q = quizQuestions[currentQ];
+    const correctIdx = q.correct;
+    const card = document.querySelector(".quiz-card");
+    document.querySelectorAll(".option-btn").forEach(b => b.disabled = true);
+
+    if (index === correctIdx) {
+        score++; streak++; maxStreak = Math.max(maxStreak, streak);
+        btn.classList.add("correct");
+        card.classList.add("pulse");
+        sfx.correct();
+        if (!examMode) showExplanation("✅ <b>Верно!</b> " + q.expl);
+        else showExplanation("✅ Ответ принят.");
+    } else {
+        streak = 0;
+        btn.classList.add("wrong");
+        card.classList.add("shake");
+        if (navigator.vibrate) navigator.vibrate(200);
+        sfx.wrong();
+        wrongAnswers.push({ q: q.q, correct: q.options[correctIdx], user: q.options[index], expl: q.expl });
+        if (!examMode) {
+            document.querySelectorAll(".option-btn").forEach((b, i) => {
+                if (currentOptionsOrder[i] === correctIdx) b.classList.add("correct");
+            });
+            showExplanation("❌ <b>Неверно.</b> " + q.expl);
+        } else {
+            showExplanation("❌ Ответ принят.");
+        }
+    }
+    setTimeout(() => card.classList.remove("shake", "pulse"), 450);
+
+    if (!examMode) {
+        const buttons = document.querySelectorAll(".option-btn");
+        const correctPct = 25 + Math.floor(Math.random() * 50);
+        const wrongShare = 100 - correctPct;
+        let wi = 0;
+        buttons.forEach((b, i) => {
+            const note = b.querySelector(".stat-note");
+            note.style.display = "block";
+            if (currentOptionsOrder[i] === correctIdx) note.innerText = "выбрали " + correctPct + "% учеников";
+            else { const w = Math.floor(wrongShare * [0.35, 0.35, 0.3][wi]); note.innerText = "выбрали " + w + "% учеников"; wi++; }
+        });
+    }
+}
+
+function nextQuestion() {
+    sfx.click();
+    currentQ++;
+    if (currentQ < quizQuestions.length) showQuestion();
+    else showResults();
+}
+
+/* ==================== РЕЗУЛЬТАТЫ ==================== */
+function showResults() {
+    clearInterval(timerInterval);
+    clearInterval(totalTimerInterval);
+    $("quiz-screen").style.display = "none";
+    $("result-screen").style.display = "block";
+    const total = quizQuestions.length;
+    const percent = score / total;
+    $("score-text").innerText = score + " / " + total;
+
+    let gradeText, color;
+    if (percent >= 0.8) { gradeText = "Оценка: 5"; color = "#28a745"; }
+    else if (percent >= 0.6) { gradeText = "Оценка: 4"; color = "#ffc107"; }
+    else if (percent >= 0.4) { gradeText = "Оценка: 3"; color = "#ff9800"; }
+    else { gradeText = "Оценка: 2"; color = "#dc3545"; }
+    $("grade-text").innerText = gradeText;
+    $("grade-text").style.color = color;
+    $("feedback-text").innerText = percent === 1 ? "Идеально! Ты настоящая кибер-защита!" :
+        percent >= 0.8 ? "Почти идеально! Осталось чуть-чуть!" :
+        percent >= 0.6 ? "Хороший результат, но повтори правила!" :
+        percent >= 0.4 ? "Неплохо, но кибербезопасность нужно знать лучше!" :
+        "Будь осторожнее в сети! Попробуй ещё раз.";
+
+    if (percent === 1) { sfx.win(); launchConfetti(); }
+
+    const avg = answerTimes.length ? (answerTimes.reduce((a, b) => a + b, 0) / answerTimes.length) : 0;
+    $("stats-line").innerText = "🎯 Точность: " + Math.round(percent * 100) + "% · ⚡ Среднее время ответа: " + avg.toFixed(1) + " сек · ⏱ Тест пройден за " + fmtTime(totalSeconds) + (examMode ? " · 🎓 Экзамен" : "");
+
+    const records = getRecords();
+    let newRecord = false;
+    if (records[questionCount] === undefined || score > records[questionCount]) {
+        records[questionCount] = score;
+        localStorage.setItem("cyberQuizRecords", JSON.stringify(records));
+        newRecord = true;
+    }
+    $("best-result").innerText = newRecord ? "🏆 Новый рекорд: " + score + " из " + total + "!" : "Рекорд на " + questionCount + " вопросов: " + records[questionCount];
+    $("best-result").style.color = newRecord ? "#28a745" : "var(--muted)";
+
+    const badges = getBadges();
+    const newBadges = [];
+    if (percent === 1 && !badges.includes("first5")) { badges.push("first5"); newBadges.push("🎯 Первая пятёрка"); }
+    if (maxStreak >= 10 && !badges.includes("blitz")) { badges.push("blitz"); newBadges.push("⚡ Блиц: 10 подряд"); }
+    if (newRecord && !badges.includes("record")) { badges.push("record"); newBadges.push("🏆 Рекордсмен"); }
+    localStorage.setItem("cyberQuizBadges", JSON.stringify(badges));
+    $("new-badges").innerHTML = newBadges.length ? "🏅 Новые достижения: <b>" + newBadges.join("</b>, <b>") + "</b>!" : "";
+
+    const mb = $("mistakes-block");
+    if (wrongAnswers.length && !examMode) {
+        let html = "<details><summary>📝 Разбор ошибок (" + wrongAnswers.length + ")</summary>";
+        wrongAnswers.forEach(w => {
+            html += "<div class='mistake-item'><div class='mq'>" + w.q + "</div><div class='mc'>✔ Правильно: " + w.correct + "</div><div class='mu'>✘ Твой ответ: " + w.user + "</div><div style='color:var(--muted);margin-top:4px'>" + w.expl + "</div></div>";
+        });
+        html += "</details>";
+        mb.innerHTML = html;
+    } else if (wrongAnswers.length && examMode) {
+        mb.innerHTML = "<details><summary>📝 Посмотреть свои ответы (" + wrongAnswers.length + " неверных)</summary>" +
+            wrongAnswers.map(w => "<div class='mistake-item'><div class='mq'>" + w.q + "</div></div>").join("") + "</details>";
+    } else {
+        mb.innerHTML = "";
+    }
+    resetChat();
+}
+
+/* ==================== КОПИРОВАНИЕ ==================== */
+function copyResult() {
+    const text = "Я прошёл викторину по кибербезопасности: " + score + " из " + quizQuestions.length + " (" + $("grade-text").innerText + ")! Проверь свои знания — а ты сможешь лучше? 🔒";
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            $("feedback-text").innerText = "📋 Результат скопирован! Вставь его в чат или сообщение.";
+        }).catch(() => fallbackCopy(text));
+    } else fallbackCopy(text);
+}
+function fallbackCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); $("feedback-text").innerText = "📋 Результат скопирован!"; } catch (e) {}
+    document.body.removeChild(ta);
+}
+
+/* ==================== ПЕРЕЗАПУСК ==================== */
+function restartQuiz() {
+    clearInterval(timerInterval);
+    clearInterval(totalTimerInterval);
+    $("start-screen").style.display = "block";
+    $("quiz-screen").style.display = "none";
+    $("result-screen").style.display = "none";
+    showRecords();
+}
+
+/* ==================== ЧАТ ==================== */
+function addChatMsg(text, isUser) {
+    const box = $("chat-messages");
+    const msg = document.createElement("div");
+    msg.className = "chat-msg " + (isUser ? "user" : "bot");
+    msg.innerText = text;
+    box.appendChild(msg);
+    box.scrollTop = box.scrollHeight;
+    return msg;
+}
+
+function addBotTypewriter(text) {
+    const box = $("chat-messages");
+    const msg = document.createElement("div");
+    msg.className = "chat-msg bot";
+    const span = document.createElement("span");
+    const cursor = document.createElement("span");
+    cursor.className = "terminal-cursor";
+    cursor.innerText = "▮";
+    msg.appendChild(span); msg.appendChild(cursor);
+    box.appendChild(msg);
+    box.scrollTop = box.scrollHeight;
+    let i = 0, finished = false;
+    function finish() {
+        if (finished) return;
+        finished = true;
+        clearInterval(typeTimer);
+        span.innerText = text;
+        cursor.remove();
+    }
+    msg.onclick = finish;
+    typeTimer = setInterval(() => {
+        if (finished) return;
+        span.innerText = text.slice(0, ++i);
+        box.scrollTop = box.scrollHeight;
+        if (i >= text.length) finish();
+    }, 14);
+}
+
+function resetChat() {
+    $("chat-messages").innerHTML = "";
+    addBotTypewriter("Привет! Я КиберПомощник 🤖\nСпроси меня о любом термине из теста! Я могу ответить по темам:\n• 🔑 Пароли и 2FA\n• 🎣 Фишинг и мошенники\n• 🦠 Вирусы и антивирусы\n• 🔒 HTTPS и безопасные сайты\n• 📧 Спам и подозрительные письма\n• 📶 Открытый Wi-Fi и VPN\n• 🏠 Личные данные\n• 😞 Кибербуллинг\n• 💳 Оплата картой\n• 👤 Взлом аккаунтов\nПросто напиши вопрос в поле ниже!");
+}
+
+function sendQuestion() {
+    const input = $("chat-input");
+    const text = input.value.trim();
+    if (!text) return;
+    addChatMsg(text, true);
+    input.value = "";
+    const lower = text.toLowerCase();
+    let answer = null;
+    for (const item of botKnowledge) {
+        if (item.keys.some(k => lower.includes(k))) { answer = item.answer; break; }
+    }
+    if (!answer) answer = "Хм, я пока не знаю ответ 🤔 Спроси про: пароли, фишинг, 2FA, вирусы, HTTPS, спам, Wi-Fi, VPN, личные данные, кибербуллинг, оплату картой или взлом аккаунтов. А если что-то осталось непонятным — обязательно спроси у учителя!";
+    setTimeout(() => addBotTypewriter(answer), 350);
+}
+
+/* ==================== КЛАВИАТУРА ==================== */
+document.addEventListener("keydown", e => {
+    if ($("quiz-screen").style.display !== "block") return;
+    if (canAnswer && ["1", "2", "3", "4"].includes(e.key)) {
+        const btns = document.querySelectorAll(".option-btn");
+        const i = parseInt(e.key) - 1;
+        if (btns[i] && !btns[i].disabled) btns[i].click();
+    } else if (e.key === "Enter" && $("next-btn").style.display === "block") {
+        nextQuestion();
+    }
+});
+
+/* ==================== СТАРТ ==================== */
+window.addEventListener("resize", () => { const cv = $("matrix-canvas"); cv.width = innerWidth; cv.height = innerHeight; });
+applyTheme();
+$("matrix-toggle").textContent = settings.matrix ? "⏸ Фон" : "▶ Фон";
+showRecords();
+</script>
+</body>
+</html>
